@@ -90,34 +90,46 @@ class Input {
         this.el.addEventListener('mousedown', this.handleMouseDown.bind(this))
         this.el.addEventListener('blur', this.blur.bind(this))
     }
-
+    // metaKey: true
+    // repeat: false
+    // returnValue: true
 
     /**
      * @param {KeyboardEvent} event
      * @returns {void}
      */
     handleKeyboard(event) {
-        const code = event.code
+        // event.preventDefault()
+        const code = event.key
         const cacheValue = this.value
+        const metaKey = event.metaKey
         const cacheCursorPosition = this.cursorPosition
         let prefix = this.value.slice(0, this.cursorPosition);
         let postfix = this.value.slice(this.cursorPosition);
+
         this.value = prefix
-        // Shift
+        // console.log(event)
         switch (code) {
             case "Space":
                 this.value += ' ';
                 this.cursorPosition++
+                break
+            case "Shift":
+            case "Meta":
+            case "Tab":
+            case "CapsLock":
                 break
             case "Backspace":
                 this.value = prefix.slice(0, -1);
                 this.cursorPosition = Math.max(this.cursorPosition - 1, 0)
                 break
             case 'ArrowLeft':
-                this.cursorPosition = Math.max(this.cursorPosition - 1, 0)
+                const switchCountL = metaKey ? 0 : this.cursorPosition - 1
+                this.cursorPosition = Math.max(switchCountL, 0)
                 break
             case 'ArrowRight':
-                this.cursorPosition = Math.min(this.cursorPosition + 1, cacheValue.length)
+                const switchCountR = metaKey ? cacheValue.length : this.cursorPosition + 1
+                this.cursorPosition = Math.min(switchCountR, cacheValue.length)
                 break
             default:
                 this.value += event.key
