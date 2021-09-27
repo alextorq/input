@@ -1,12 +1,34 @@
+const HISTORY_LENGTH = 10
+
+/**
+ * @param {(function())} func
+ * @return {(function())|*}
+ */
+function createCash(func) {
+    const cash = new Map();
+    return function(...args) {
+        const key = JSON.stringify(args)
+        if (!cash.has(key)) {
+            cash.set(key, func.apply(this, args))
+        }
+        return cash.get(key)
+    }
+}
+
+
 class Input {
-    constructor() {
+    constructor(value = '') {
         this.isFocus = false
-        this.value = ''
+        this.value = value
         this.history = []
         this.cursorPosition = 0
 
+        this.defineCursorByClick = createCash(this.defineCursorByClick)
+        this.calculateCursorPosition = createCash(this.calculateCursorPosition)
+
         this.createEl()
         this.createVirtual()
+        this.setAllData(value)
     }
 
     static template() {
@@ -20,6 +42,17 @@ class Input {
         return wrapper
     }
 
+
+
+    /**
+     * @param {string} value
+     */
+    setAllData(value) {
+        this.content.innerHTML = value
+        this.virContent.innerHTML = value
+        this.setCursorPosition(value.length, value)
+    }
+
     /**
      * @returns {void}
      */
@@ -31,20 +64,13 @@ class Input {
     }
 
     /**
-     * @returns {void}
-     */
-    defineCursor() {
-        this.virContent.textContent = this.value
-        const width = this.virContent.clientWidth || 0
-    }
-
-    /**
      * @param {number} clickX
-     * @returns {number} param
+     * @param {string} value
+     * @param {number} cursorWidth
+     * @returns {number}
      */
-    defineCursorByClick(clickX) {
-        const chars = this.value.split('')
-        let cursorWidth = this.virContent.clientWidth
+    defineCursorByClick(clickX, value, cursorWidth) {
+        const chars = value.split('')
         let index = chars.length
         if (clickX > cursorWidth) {
             return index
@@ -64,18 +90,48 @@ class Input {
         return index
     }
 
+
+    switchTextContent(l) {
+        if (l > this.el.clientWidth) {
+            this.el.scrollLeft = (l - this.el.clientWidth) + 20
+        }else {
+            this.el.scrollLeft = 0
+        }
+    }
+
     /**
      * @param {number} index
+     * @param {string} value
      */
-    setCursorPosition(index) {
+    calculateCursorPosition(index, value) {
+        this.virContent.textContent = value.slice(0, this.cursorPosition);
+        return this.virContent.clientWidth
+    }
+
+    /**
+     * @param {number} index
+     * @param {string} value
+     */
+    setCursorPosition(index, value) {
         this.cursorPosition = (index || 0)
-        this.virContent.textContent = this.value.slice(0, this.cursorPosition);
-        //read
-        const cursorWidth = this.virContent.clientWidth
+        // read
+        const cursorWidth = this.calculateCursorPosition(index, value)
+        this.switchTextContent(cursorWidth)
         //write
         this.virContent.textContent = this.value
+        this.cursor.style.left = `${(cursorWidth || 0) - 4}px`
+    }
 
-        this.cursor.style.left = `${(cursorWidth || 0) + 4}px`
+    historyBack(value) {
+        const val = this.history.pop()
+        if (val !== undefined) {
+            this.value = val
+            this.cursorPosition = val.length
+        }
+    }
+
+    historyAdd(value) {
+        this.history.push(value)
     }
 
     /**
@@ -88,11 +144,13 @@ class Input {
 
         this.el.addEventListener('keydown', this.handleKeyboard.bind(this))
         this.el.addEventListener('mousedown', this.handleMouseDown.bind(this))
+        this.el.addEventListener('dblclick', this.handleDbClick.bind(this))
         this.el.addEventListener('blur', this.blur.bind(this))
     }
-    // metaKey: true
-    // repeat: false
-    // returnValue: true
+
+    handleDbClick() {
+        this.isFocus = false
+    }
 
     /**
      * @param {KeyboardEvent} event
@@ -100,12 +158,14 @@ class Input {
      */
     handleKeyboard(event) {
         // event.preventDefault()
+        //Change to FSM
         const code = event.key
         const cacheValue = this.value
         const metaKey = event.metaKey
         const cacheCursorPosition = this.cursorPosition
         let prefix = this.value.slice(0, this.cursorPosition);
         let postfix = this.value.slice(this.cursorPosition);
+        let addToHistory = false
 
         this.value = prefix
         // console.log(event)
@@ -118,6 +178,7 @@ class Input {
             case "Meta":
             case "Tab":
             case "CapsLock":
+            case "Escape":
                 break
             case "Backspace":
                 this.value = prefix.slice(0, -1);
@@ -127,6 +188,36 @@ class Input {
                 const switchCountL = metaKey ? 0 : this.cursorPosition - 1
                 this.cursorPosition = Math.max(switchCountL, 0)
                 break
+            case 'a':
+                if (metaKey) {
+                }else {
+                    this.value += event.key
+                    this.cursorPosition++
+                }
+                break
+            case 'v':
+                if (metaKey) {
+                }else {
+                    this.value += event.key
+                    this.cursorPosition++
+                }
+                break
+            case 'c':
+                if (metaKey) {
+                }else {
+                    this.value += event.key
+                    this.cursorPosition++
+                }
+                break
+            case 'z':
+                if (metaKey) {
+                    addToHistory = true
+                    this.historyBack()
+                }else {
+                    this.value += event.key
+                    this.cursorPosition++
+                }
+                break
             case 'ArrowRight':
                 const switchCountR = metaKey ? cacheValue.length : this.cursorPosition + 1
                 this.cursorPosition = Math.min(switchCountR, cacheValue.length)
@@ -135,13 +226,18 @@ class Input {
                 this.value += event.key
                 this.cursorPosition++
         }
+        // if (addToHistory) {
+        //     postfix = ''
+        //     event.preventDefault()
+        // }
         this.value += postfix
         if (cacheValue !== this.value) {
             this.content.innerHTML = this.value
             this.virContent.innerHTML = this.value
+            // if (addToHistory) this.historyAdd(cacheValue)
         }
         if (cacheCursorPosition !== this.cursorPosition) {
-            this.setCursorPosition(this.cursorPosition)
+            this.setCursorPosition(this.cursorPosition, this.value)
         }
     }
 
@@ -150,8 +246,8 @@ class Input {
      * @returns {void}
      */
     handleMouseDown(event) {
-        const index = this.defineCursorByClick(event.layerX)
-        this.setCursorPosition(index)
+        const index = this.defineCursorByClick(event.layerX, this.value, this.virContent.clientWidth)
+        this.setCursorPosition(index, this.value)
         this.focus()
     }
 
@@ -175,10 +271,15 @@ class Input {
     /**
      * @returns {void}
      */
-    mount(selector) {
+    static mount() {
         try {
-            const parent = document.querySelector(selector).parentNode
-            parent.replaceChild(this.el, document.querySelector(selector));
+            const inputs = [...document.querySelectorAll('CustomInput')]
+            inputs.forEach(input => {
+                const inValue = input.getAttribute('value')
+                const parent = input.parentNode
+                const inputInstance = new Input(inValue)
+                parent.replaceChild(inputInstance.el, input)
+            })
         }catch (e) {
             console.log(e)
         }
@@ -187,6 +288,5 @@ class Input {
 
 
 document.addEventListener('DOMContentLoaded', () => {
-    const input = new Input()
-    input.mount('#app')
+    Input.mount()
 })
