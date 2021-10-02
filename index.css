@@ -46,7 +46,7 @@
     outline: -webkit-focus-ring-color auto 1px;
 }
 
-.focus.input .cursor{
+.cursor_set.input .cursor{
     animation: 1s blink step-end infinite;
 }
 

@@ -19,6 +19,7 @@ function createCash(func) {
 class Input {
     constructor(value = '') {
         this.isFocus = false
+        this.isSelect = false
         this.value = value
         this.history = []
         this.cursorPosition = 0
@@ -67,12 +68,14 @@ class Input {
      * @param {number} clickX
      * @param {string} value
      * @param {number} cursorWidth
+     * @param {number} left
      * @returns {number}
      */
-    defineCursorByClick(clickX, value, cursorWidth) {
+    defineCursorByClick(clickX, value, cursorWidth, left) {
+        const custX = clickX + left
         const chars = value.split('')
         let index = chars.length
-        if (clickX > cursorWidth) {
+        if (custX > cursorWidth) {
             return index
         }
         this.virContent.textContent = ''
@@ -81,7 +84,7 @@ class Input {
             str += char
             this.virContent.textContent = str
             const width = this.virContent.clientWidth
-            if ((width + 4) >= clickX) {
+            if ((width - 4) >= custX) {
                 index = i
                 break
             }
@@ -150,6 +153,8 @@ class Input {
 
     handleDbClick() {
         this.isFocus = false
+        this.isSelect = true
+        this.el.classList.remove('cursor_set')
     }
 
     /**
@@ -246,7 +251,7 @@ class Input {
      * @returns {void}
      */
     handleMouseDown(event) {
-        const index = this.defineCursorByClick(event.layerX, this.value, this.virContent.clientWidth)
+        const index = this.defineCursorByClick(event.layerX, this.value, this.virContent.clientWidth, this.el.scrollLeft)
         this.setCursorPosition(index, this.value)
         this.focus()
     }
@@ -257,6 +262,7 @@ class Input {
     focus() {
         this.isFocus = true
         this.el.classList.add('focus')
+        this.el.classList.add('cursor_set')
     }
 
     /**
@@ -265,6 +271,7 @@ class Input {
     blur() {
         this.isFocus = false
         this.el.classList.remove('focus')
+        this.el.classList.remove('cursor_set')
     }
 
     // change, input, cut, copy, paste.
