@@ -15,11 +15,20 @@ function createCash(func) {
     }
 }
 
+//state may be addChar space deleteChar none
+
+const STATE = {
+    addChar: 0,
+    deleteChar: 1,
+    moveToL: 2,
+    moveToR: 3,
+    none: 4,
+}
+
 
 class Input {
     constructor(value = '') {
-        this.isFocus = false
-        this.isSelect = false
+        this.state = STATE.none
         this.value = value
         this.history = []
         this.cursorPosition = 0
@@ -42,8 +51,6 @@ class Input {
         `
         return wrapper
     }
-
-
 
     /**
      * @param {string} value
@@ -107,6 +114,7 @@ class Input {
      * @param {string} value
      */
     calculateCursorPosition(index, value) {
+        //Change cache on every char width
         this.virContent.textContent = value.slice(0, this.cursorPosition);
         return this.virContent.clientWidth
     }
@@ -152,7 +160,6 @@ class Input {
     }
 
     handleDbClick() {
-        this.isFocus = false
         this.isSelect = true
         this.el.classList.remove('cursor_set')
     }
@@ -162,7 +169,7 @@ class Input {
      * @returns {void}
      */
     handleKeyboard(event) {
-        // event.preventDefault()
+        event.preventDefault()
         //Change to FSM
         const code = event.key
         const cacheValue = this.value
@@ -172,65 +179,72 @@ class Input {
         let postfix = this.value.slice(this.cursorPosition);
         let addToHistory = false
 
+        let state = STATE.addChar
+        let char = event.key
+
         this.value = prefix
-        // console.log(event)
         switch (code) {
             case "Space":
-                this.value += ' ';
-                this.cursorPosition++
+                char = ' ';
                 break
             case "Shift":
             case "Meta":
             case "Tab":
             case "CapsLock":
             case "Escape":
+                state = STATE.none
                 break
             case "Backspace":
-                this.value = prefix.slice(0, -1);
-                this.cursorPosition = Math.max(this.cursorPosition - 1, 0)
+                state = STATE.deleteChar
                 break
             case 'ArrowLeft':
-                const switchCountL = metaKey ? 0 : this.cursorPosition - 1
-                this.cursorPosition = Math.max(switchCountL, 0)
+                state = STATE.moveToL
                 break
             case 'a':
-                if (metaKey) {
-                }else {
-                    this.value += event.key
-                    this.cursorPosition++
-                }
+                if (metaKey) {}
                 break
             case 'v':
-                if (metaKey) {
-                }else {
-                    this.value += event.key
-                    this.cursorPosition++
-                }
+                if (metaKey) {}
                 break
             case 'c':
-                if (metaKey) {
-                }else {
-                    this.value += event.key
-                    this.cursorPosition++
-                }
+                if (metaKey) {}
                 break
             case 'z':
                 if (metaKey) {
                     addToHistory = true
                     this.historyBack()
-                }else {
-                    this.value += event.key
-                    this.cursorPosition++
                 }
                 break
             case 'ArrowRight':
+                state = STATE.moveToR
+                break
+            default:
+                state = STATE.addChar
+                break
+        }
+
+        switch (state) {
+            case STATE.addChar:
+                this.value += char
+                this.cursorPosition++
+                break
+            case STATE.deleteChar:
+                this.value = prefix.slice(0, -1);
+                this.cursorPosition = Math.max(this.cursorPosition - 1, 0)
+                break
+            case STATE.moveToL:
+                const switchCountL = metaKey ? 0 : this.cursorPosition - 1
+                this.cursorPosition = Math.max(switchCountL, 0)
+                break
+            case STATE.moveToR:
                 const switchCountR = metaKey ? cacheValue.length : this.cursorPosition + 1
                 this.cursorPosition = Math.min(switchCountR, cacheValue.length)
                 break
-            default:
-                this.value += event.key
-                this.cursorPosition++
+            case STATE.none:
+                this.value = prefix
+                break
         }
+
         // if (addToHistory) {
         //     postfix = ''
         //     event.preventDefault()
@@ -244,6 +258,7 @@ class Input {
         if (cacheCursorPosition !== this.cursorPosition) {
             this.setCursorPosition(this.cursorPosition, this.value)
         }
+        this.state = state
     }
 
     /**
@@ -260,7 +275,6 @@ class Input {
      * @returns {void}
      */
     focus() {
-        this.isFocus = true
         this.el.classList.add('focus')
         this.el.classList.add('cursor_set')
     }
@@ -269,7 +283,6 @@ class Input {
      * @returns {void}
      */
     blur() {
-        this.isFocus = false
         this.el.classList.remove('focus')
         this.el.classList.remove('cursor_set')
     }
