@@ -1,5 +1,3 @@
-const HISTORY_LENGTH = 10
-
 /**
  * @param {(function())} func
  * @return {(function())|*}
@@ -15,20 +13,9 @@ function createCash(func) {
     }
 }
 
-//state may be addChar space deleteChar none
-
-const STATE = {
-    addChar: 0,
-    deleteChar: 1,
-    moveToL: 2,
-    moveToR: 3,
-    none: 4,
-}
-
-
 class Input {
     constructor(value = '') {
-        this.state = STATE.none
+        this.state = Input.STATE.none
         this.value = value
         this.history = []
         this.cursorPosition = 0
@@ -40,6 +27,17 @@ class Input {
         this.createVirtual()
         this.setAllData(value)
     }
+
+    static STATE = {
+        addChar: 0,
+        deleteChar: 1,
+        moveToL: 2,
+        moveToR: 3,
+        backHistory: 4,
+        none: 5,
+    }
+
+    static HISTORY_LENGTH = 10
 
     static template() {
         const wrapper = document.createElement('div')
@@ -101,6 +99,10 @@ class Input {
     }
 
 
+    /**
+     * @param {number} l
+     * @return {void}
+     */
     switchTextContent(l) {
         if (l > this.el.clientWidth) {
             this.el.scrollLeft = (l - this.el.clientWidth) + 20
@@ -112,9 +114,9 @@ class Input {
     /**
      * @param {number} index
      * @param {string} value
+     * @return {number}
      */
     calculateCursorPosition(index, value) {
-        //Change cache on every char width
         this.virContent.textContent = value.slice(0, this.cursorPosition);
         return this.virContent.clientWidth
     }
@@ -133,16 +135,16 @@ class Input {
         this.cursor.style.left = `${(cursorWidth || 0) - 4}px`
     }
 
-    historyBack(value) {
-        const val = this.history.pop()
-        if (val !== undefined) {
-            this.value = val
-            this.cursorPosition = val.length
-        }
+    /**
+     * @return {string}
+     */
+    historyBack() {
+        return this.history.pop() || ''
     }
 
     historyAdd(value) {
         this.history.push(value)
+        this.history = this.history.slice(Input.HISTORY_LENGTH);
     }
 
     /**
@@ -160,7 +162,7 @@ class Input {
     }
 
     handleDbClick() {
-        this.isSelect = true
+        // this.state = STATE.
         this.el.classList.remove('cursor_set')
     }
 
@@ -170,16 +172,14 @@ class Input {
      */
     handleKeyboard(event) {
         event.preventDefault()
-        //Change to FSM
         const code = event.key
         const cacheValue = this.value
         const metaKey = event.metaKey
         const cacheCursorPosition = this.cursorPosition
         let prefix = this.value.slice(0, this.cursorPosition);
         let postfix = this.value.slice(this.cursorPosition);
-        let addToHistory = false
 
-        let state = STATE.addChar
+        let state = Input.STATE.addChar
         let char = event.key
 
         this.value = prefix
@@ -191,14 +191,16 @@ class Input {
             case "Meta":
             case "Tab":
             case "CapsLock":
+            case "Control":
+            case "Alt":
             case "Escape":
-                state = STATE.none
+                state = Input.STATE.none
                 break
             case "Backspace":
-                state = STATE.deleteChar
+                state = Input.STATE.deleteChar
                 break
             case 'ArrowLeft':
-                state = STATE.moveToL
+                state = Input.STATE.moveToL
                 break
             case 'a':
                 if (metaKey) {}
@@ -210,50 +212,46 @@ class Input {
                 if (metaKey) {}
                 break
             case 'z':
-                if (metaKey) {
-                    addToHistory = true
-                    this.historyBack()
-                }
+                if (metaKey) state = Input.STATE.backHistory
                 break
             case 'ArrowRight':
-                state = STATE.moveToR
+                state = Input.STATE.moveToR
                 break
             default:
-                state = STATE.addChar
+                state = Input.STATE.addChar
                 break
         }
 
         switch (state) {
-            case STATE.addChar:
+            case Input.STATE.addChar:
                 this.value += char
                 this.cursorPosition++
                 break
-            case STATE.deleteChar:
+            case Input.STATE.deleteChar:
                 this.value = prefix.slice(0, -1);
                 this.cursorPosition = Math.max(this.cursorPosition - 1, 0)
                 break
-            case STATE.moveToL:
+            case Input.STATE.moveToL:
                 const switchCountL = metaKey ? 0 : this.cursorPosition - 1
                 this.cursorPosition = Math.max(switchCountL, 0)
                 break
-            case STATE.moveToR:
+            case Input.STATE.moveToR:
                 const switchCountR = metaKey ? cacheValue.length : this.cursorPosition + 1
                 this.cursorPosition = Math.min(switchCountR, cacheValue.length)
                 break
-            case STATE.none:
+            case Input.STATE.backHistory:
+                this.value = this.historyBack()
+                postfix = ''
+                this.cursorPosition = this.value.length
+                break
+            case Input.STATE.none:
                 this.value = prefix
                 break
         }
-
-        // if (addToHistory) {
-        //     postfix = ''
-        //     event.preventDefault()
-        // }
         this.value += postfix
         if (cacheValue !== this.value) {
             this.content.innerHTML = this.value
             this.virContent.innerHTML = this.value
-            // if (addToHistory) this.historyAdd(cacheValue)
         }
         if (cacheCursorPosition !== this.cursorPosition) {
             this.setCursorPosition(this.cursorPosition, this.value)
@@ -285,6 +283,7 @@ class Input {
     blur() {
         this.el.classList.remove('focus')
         this.el.classList.remove('cursor_set')
+        this.historyAdd(this.value)
     }
 
     // change, input, cut, copy, paste.
@@ -307,6 +306,4 @@ class Input {
 }
 
 
-document.addEventListener('DOMContentLoaded', () => {
-    Input.mount()
-})
+document.addEventListener('DOMContentLoaded', Input.mount)
