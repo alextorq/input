@@ -144,7 +144,7 @@ class Input {
 
     historyAdd(value) {
         this.history.push(value)
-        this.history = this.history.slice(Input.HISTORY_LENGTH);
+        this.history = this.history.slice(-Input.HISTORY_LENGTH);
     }
 
     /**
