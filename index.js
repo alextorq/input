@@ -28,14 +28,14 @@ class Input {
         this.setAllData(value)
     }
 
-    static STATE = {
-        addChar: 0,
-        deleteChar: 1,
-        moveToL: 2,
-        moveToR: 3,
-        backHistory: 4,
-        none: 5,
-    }
+    static STATE = Object.freeze({
+        addChar: Symbol('addChar'),
+        deleteChar: Symbol('deleteChar'),
+        moveToL: Symbol('moveToL'),
+        moveToR: Symbol('moveToR'),
+        backHistory: Symbol('backHistory'),
+        none: Symbol('none'),
+    })
 
     static HISTORY_LENGTH = 10
 
